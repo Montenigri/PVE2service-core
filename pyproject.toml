@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pve2"
+version = "0.1.0"
+description = "Proxmox Unified Management Platform — Connect your cluster to DNS, notifications, power scheduling, proxy, and wiki"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "PVE2 Services Contributors" },
+]
+keywords = ["proxmox", "ve", "homelab", "dns", "notifications", "wiki", "proxy", "automation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "fastapi>=0.100.0,<1.0",
+    "uvicorn[standard]>=0.22.0,<1.0",
+    "httpx>=0.24.0,<1.0",
+    "jinja2>=3.1.0,<4.0",
+    "apscheduler>=3.10.0,<4.0",
+    "python-dotenv>=1.0.0,<2.0",
+    "sqlalchemy>=2.0.0,<3.0",
+    "psycopg2-binary>=2.9.0,<3.0",
+    "bcrypt>=4.0.0,<5.0",
+    "cryptography>=41.0.0,<44.0",
+    "pydantic>=2.0.0,<3.0",
+    "pyyaml>=6.0,<7.0",
+    "packaging>=23.0,<26.0",
+    "boto3>=1.28.0,<2.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "httpx", "moto[s3]>=5.0,<6.0"]
+
+[project.scripts]
+# Build/sign/publish plugin packages to the store and generate signing keys.
+# Shipped with the core so the plugin repo can run them from the wheel.
+pve2-build-plugin = "PVE2Services.libs.plugin_build:main"
+pve2-generate-keys = "PVE2Services.libs.plugin_keys:main"
+
+[project.urls]
+Homepage = "https://github.com/Montenigri/PVE2Services"
+Repository = "https://github.com/Montenigri/PVE2Services"
+Issues = "https://github.com/Montenigri/PVE2Services/issues"
+Documentation = "https://github.com/Montenigri/PVE2Services/blob/main/docs/TECHNICAL.md"
+Changelog = "https://github.com/Montenigri/PVE2Services/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+# The import package is nested one level below the repo root.
+include = ["PVE2Services*"]
+
+[tool.setuptools.package-data]
+"PVE2Services.core.wiki_service.app" = ["templates/*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# The core package and repo tooling are first-party in this checkout.
+known-first-party = ["PVE2Services", "tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVE2Services — Audit Logs</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:#f5f5f5; padding:20px;
+  }
+  .container { max-width:1100px; margin:0 auto; }
+  .header { display:flex; align-items:center; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+  .header h1 { font-size:1.4em; color:#333; }
+  .back-link { color:#667eea; text-decoration:none; font-size:0.9em; }
+  .back-link:hover { text-decoration:underline; }
+  .card { background:white; border-radius:10px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.1); margin-bottom:20px; }
+  .card h2 { font-size:1.1em; color:#444; margin-bottom:16px; }
+  .form-group { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .form-group label { font-weight:600; color:#444; font-size:0.9em; }
+  .form-group input { padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:0.9em; width:90px; }
+  .form-group select { padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:0.9em; }
+  .form-group input:focus, .form-group select:focus { outline:none; border-color:#667eea; }
+  .btn { padding:9px 18px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+  .btn-primary { background:#667eea; color:white; }
+  .btn-primary:hover { background:#764ba2; }
+  .btn-danger { background:#dc2626; color:white; }
+  .btn-danger:hover { background:#b91c1c; }
+  .info { background:#e0e7ff; color:#3730a3; padding:12px; border-radius:6px; margin-bottom:16px; font-size:0.9em; line-height:1.5; }
+  .file-list { list-style:none; }
+  .file-list li { padding:10px 6px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; }
+  .file-list li:last-child { border-bottom:none; }
+  .file-list .fname { font-weight:600; color:#333; cursor:pointer; }
+  .file-list .fname:hover { text-decoration:underline; color:#667eea; }
+  .file-list .fmeta { color:#999; font-size:0.8em; }
+  .log-content {
+    background:#1e1e1e; color:#d4d4d4; padding:16px; border-radius:8px;
+    font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+    font-size:0.82em; line-height:1.5; white-space:pre-wrap; word-break:break-word;
+    max-height:600px; overflow:auto; display:none;
+  }
+  .log-content .sev-INFO { color:#4fc3f7; }
+  .log-content .sev-OK { color:#81c784; }
+  .log-content .sev-WARNING { color:#ffb74d; }
+  .log-content .sev-ERROR { color:#e57373; }
+  .log-content .sev-CRITICAL { color:#f48fb1; font-weight:700; }
+  .empty { color:#999; padding:20px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <a href="/admin/hub" class="back-link">&larr; Back to Hub</a>
+    <h1>Audit Logs</h1>
+  </div>
+
+  <div class="info">
+    Audit logs record every real operation: config changes, syncs, destructive actions
+    (machine stop/start, proxy deploys, recommendation applies), auth events, and page CRUD.
+    Logs are written to daily-rotated files in <code>logs/</code> and retained for the
+    configured number of days. Secrets are never logged.
+  </div>
+
+  <div class="card">
+    <h2>Retention</h2>
+    <div class="form-group">
+      <label>Keep logs for</label>
+      <input type="number" id="retention-input" min="1" max="3650" step="1">
+      <span style="color:#999;font-size:0.9em;">days</span>
+      <button class="btn btn-primary" onclick="saveRetention()">Save</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Log files</h2>
+    <ul class="file-list" id="file-list">
+      <li class="empty">Loading…</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Log content</h2>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <button class="btn btn-primary" id="download-btn" style="display:none;" onclick="downloadLog()">&#11015; Download</button>
+    </div>
+    <div class="log-content" id="log-content"></div>
+  </div>
+</div>
+
+<script>
+let CURRENT_FILE = null;
+
+async function getCsrf() {
+  const m = document.cookie.match(/(?:^|;\s*)pve2_csrf=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+async function loadFiles() {
+  const ul = document.getElementById('file-list');
+  try {
+    const r = await fetch('/admin/log/files');
+    const data = await r.json();
+    document.getElementById('retention-input').value = data.retention_days || 30;
+    ul.innerHTML = '';
+    if (!data.files || data.files.length === 0) {
+      ul.innerHTML = '<li class="empty">No audit log files yet.</li>';
+      return;
+    }
+    for (const f of data.files) {
+      const li = document.createElement('li');
+      const left = document.createElement('span');
+      left.className = 'fname';
+      left.textContent = f.name;
+      left.onclick = () => loadLog(f.name);
+      const meta = document.createElement('span');
+      meta.className = 'fmeta';
+      meta.textContent = `${f.lines} lines · ${(f.size_bytes / 1024).toFixed(1)} KB`;
+      li.appendChild(left);
+      li.appendChild(meta);
+      ul.appendChild(li);
+    }
+  } catch (e) {
+    ul.innerHTML = '<li class="empty">Failed to load log files.</li>';
+  }
+}
+
+async function loadLog(name) {
+  CURRENT_FILE = name;
+  const box = document.getElementById('log-content');
+  box.style.display = 'block';
+  box.textContent = 'Loading…';
+  document.getElementById('download-btn').style.display = 'inline-block';
+  try {
+    const r = await fetch('/admin/log/file?name=' + encodeURIComponent(name));
+    if (!r.ok) throw new Error(r.status);
+    const text = await r.text();
+    box.innerHTML = '';
+    for (const line of text.split('\n')) {
+      const div = document.createElement('div');
+      const m = line.match(/^\[([^\]]+)\]\s+(\S+)\s+(.*)$/);
+      if (m && m[2] in {INFO:1,OK:1,WARNING:1,ERROR:1,CRITICAL:1}) {
+        const span = document.createElement('span');
+        span.className = 'sev-' + m[2];
+        span.textContent = `[${m[1]}] ${m[2]} ${m[3]}`;
+        div.appendChild(span);
+      } else {
+        div.textContent = line;
+      }
+      box.appendChild(div);
+    }
+  } catch (e) {
+    box.textContent = 'Failed to load log file.';
+  }
+}
+
+function downloadLog() {
+  if (!CURRENT_FILE) return;
+  window.location = '/admin/log/download?name=' + encodeURIComponent(CURRENT_FILE);
+}
+
+async function saveRetention() {
+  const days = document.getElementById('retention-input').value;
+  const r = await fetch('/admin/log/retention?days=' + encodeURIComponent(days), {
+    method: 'POST',
+    headers: {'X-CSRF-Token': getCsrf()}
+  });
+  const data = await r.json().catch(() => ({}));
+  if (r.ok) {
+    alert('Retention updated to ' + data.retention_days + ' days.');
+    loadFiles();
+  } else {
+    alert('Failed to save retention: ' + (data.detail || 'unknown error'));
+  }
+}
+
+loadFiles();
+</script>
+</body>
+</html>

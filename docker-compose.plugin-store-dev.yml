@@ -1,0 +1,41 @@
+# Local dev environment for the PVE2Services plugin store (MinIO + core).
+#
+#   docker compose -f docker-compose.plugin-store-dev.yml up -d
+#
+# Requires the signing keypair:
+#   python tools/generate_keys.py keys/plugin_signing.pub /secure/pve2_signing.pem
+#
+# Publish a plugin:
+#   PVE2_STORE_ENDPOINT=http://localhost:19000 \
+#   PVE2_PLUGIN_SIGNING_KEY=/secure/pve2_signing.pem \
+#   python tools/build_plugin.py plugins/PVE2DNS --out build --publish
+#
+# Then run the core with the store installer enabled (see docs/PLUGIN_STORE.md).
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: pve2-minio-store
+    command: server /data
+    ports:
+      - "19000:9000"
+    environment:
+      MINIO_ROOT_USER: pve2store
+      MINIO_ROOT_PASSWORD: pve2store-secret
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  store-init:
+    # Creates the plugins bucket at startup (one-shot).
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 pve2store pve2store-secret &&
+      mc mb --ignore local/pve2services-plugins &&
+      echo '{\"schema_version\":1,\"plugins\":[]}' > /tmp/index.json &&
+      mc cp /tmp/index.json local/pve2services-plugins/index.json"

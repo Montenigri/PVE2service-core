@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PVE2Services - Plugin Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .plugins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 50px;
+        }
+        .plugin-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        .plugin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        .plugin-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+        .plugin-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .plugin-desc {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .plugin-status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .plugin-version {
+            font-size: 0.85em;
+            color: #888;
+            margin-right: 8px;
+        }
+        .tier-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.78em;
+            font-weight: 600;
+        }
+        .tier-trusted {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .tier-third-party {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .plugin-caps {
+            font-size: 0.8em;
+            color: #555;
+            margin-top: 8px;
+        }
+        .plugin-caps code {
+            background: #f1f5f9;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+        .status-loaded {
+            background: #10b981;
+            color: white;
+        }
+        .access-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+        .access-btn:hover {
+            background: #764ba2;
+        }
+        .loader {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .sync-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .sync-card .sc-icon { font-size:1.6em; }
+        .sync-card .sc-body { flex:1; min-width:200px; }
+        .sync-card .sc-body h3 { font-size:1em; color:#333; margin-bottom:2px; }
+        .sync-card .sc-body .sc-status { font-size:0.85em; color:#666; }
+        .sync-card .sc-body .sc-status strong { color:#059669; }
+        .sync-card .sc-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .sync-card .sc-controls input {
+            width:80px; padding:6px 10px; border:1px solid #ddd; border-radius:6px;
+            font-size:0.9em; text-align:center;
+        }
+        .sync-card .sc-controls input:focus { outline:none; border-color:#667eea; }
+        .sync-card .sc-controls .sc-btn {
+            padding:7px 14px; border:none; border-radius:6px; cursor:pointer;
+            font-weight:600; font-size:0.85em;
+        }
+        .sc-btn-start { background:#059669; color:white; }
+        .sc-btn-start:hover { background:#047857; }
+        .sc-btn-stop { background:#dc2626; color:white; }
+        .sc-btn-stop:hover { background:#b91c1c; }
+        .sc-btn-apply { background:#667eea; color:white; }
+        .sc-btn-apply:hover { background:#764ba2; }
+        .sc-hint { font-size:0.78em; color:#999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 PVE2Services</h1>
+            <p>Unified Proxmox Management - External Platform Connectors</p>
+            <div style="margin-top:14px;">
+                <a href="/admin/log" style="background:rgba(255,255,255,0.2);color:white;text-decoration:none;padding:8px 18px;border-radius:6px;font-size:0.95em;font-weight:500;margin:0 6px;border:1px solid rgba(255,255,255,0.4);">📜 Audit Logs</a>
+                <a href="/admin/settings" style="background:rgba(255,255,255,0.2);color:white;text-decoration:none;padding:8px 18px;border-radius:6px;font-size:0.95em;font-weight:500;margin:0 6px;border:1px solid rgba(255,255,255,0.4);">⚙️ Settings</a>
+            </div>
+        </div>
+
+        <details class="info-note" style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:12px 18px;margin:0 0 24px 0;font-size:0.9em;">
+<summary style="cursor:pointer;font-weight:600;color:#4338ca;user-select:none;">&#8505;&#65039; How PVE2Services works</summary>
+<div style="margin-top:10px;color:#444;line-height:1.6;">
+<p><strong>PVE2 Core is the data hub</strong> — it syncs machines, nodes and storage from your Proxmox cluster into a shared cache. Every other plugin builds on that data: Dash and Audit visualize/analyze it, DNS / Proxy / Wiki / Notify push it to external platforms, Power manages machine state on a schedule.</p>
+<p><strong>Configure Core first</strong>; the other plugins are independent of each other and of any external service until you point them at one. All admin routes require a session; connector secrets are encrypted at rest.</p>
+</div>
+</details>
+
+        <div class="sync-card" id="sync-schedule-card" style="display:none;">
+            <div class="sc-icon">⏱️</div>
+            <div class="sc-body">
+                <h3>Core Sync Schedule</h3>
+                <div class="sc-status" id="sc-status">loading…</div>
+            </div>
+            <div class="sc-controls">
+                <input type="number" id="sc-minutes" min="0.5" max="1440" step="0.5" value="5" title="Interval in minutes">
+                <span class="sc-hint">min</span>
+                <button class="sc-btn sc-btn-apply" onclick="scApply()" title="Apply interval">Apply</button>
+                <button class="sc-btn sc-btn-start" id="sc-start" onclick="scStart()" title="Start scheduler">▶ Start</button>
+                <button class="sc-btn sc-btn-stop" id="sc-stop" onclick="scStop()" title="Stop scheduler" style="display:none;">■ Stop</button>
+            </div>
+        </div>
+
+<div id="plugins-container" class="plugins-grid">
+            <div class="loader">Loading connectors...</div>
+        </div>
+
+        <div class="footer">
+            <p>PVE2Services v0.1.0 | Connectors for external platforms</p>
+        </div>
+    </div>
+
+    <script>
+        const PLUGIN_INFO = {
+            pve2core: {
+                icon: '⚙️',
+                description: 'Central engine for Proxmox data normalization and synchronization'
+            },
+            pve2dash: {
+                icon: '📊',
+                description: 'Syncs cluster data to external dashboards'
+            },
+            pve2audit: {
+                icon: '🔍',
+                description: 'Sends logs and resource analysis to audit platforms'
+            },
+            pve2dns: {
+                icon: '🔗',
+                description: 'Syncs hosts/VMs to an external DNS server'
+            },
+            pve2notify: {
+                icon: '🔔',
+                description: 'Sends notifications and alerts to messaging services'
+            },
+            pve2proxy: {
+                icon: '🌐',
+                description: 'Generates reverse-proxy configuration for load balancing'
+            },
+            pve2power: {
+                icon: '⚡',
+                description: 'Manages intelligent node shutdown and energy optimization'
+            },
+            pve2wiki: {
+                icon: '📖',
+                description: 'Syncs Proxmox documentation with an external wiki'
+            }
+        };
+
+        const PLUGIN_PATHS = {
+            pve2core: '/admin/pve2core',
+            pve2dash: '/admin/pve2dash',
+            pve2audit: '/admin/pve2audit',
+            pve2dns: '/admin/pve2dns',
+            pve2notify: '/admin/pve2notify',
+            pve2proxy: '/admin/pve2proxy',
+            pve2power: '/admin/pve2power',
+            pve2wiki: '/admin/pve2wiki'
+        };
+
+        async function loadPlugins() {
+            const container = document.getElementById('plugins-container');
+            const plugins = [];
+
+            // Preferred source: the plugin registry (loader-derived, includes
+            // store metadata: version, trust tier, capabilities).
+            try {
+                const response = await fetch('/api/hub/plugins');
+                if (response.ok) {
+                    const data = await response.json();
+                    for (const p of (data.plugins || [])) {
+                        plugins.push({
+                            id: p.id,
+                            ...p,
+                            ...PLUGIN_INFO[p.id] || {},
+                            path: PLUGIN_PATHS[p.id] || ('/admin/' + p.id)
+                        });
+                    }
+                }
+            } catch (e) { /* fall through to legacy per-plugin probing */ }
+
+            if (plugins.length === 0) {
+                // Fallback: legacy discovery loop through /info endpoints
+                for (const [pluginId, infoUrl] of Object.entries({
+                    pve2core: '/api/plugins/pve2core/info',
+                    pve2dash: '/api/plugins/pve2dash/info',
+                    pve2audit: '/api/plugins/pve2audit/info',
+                    pve2dns: '/api/plugins/pve2dns/info',
+                    pve2notify: '/api/plugins/pve2notify/info',
+                    pve2proxy: '/api/plugins/pve2proxy/info',
+                    pve2power: '/api/plugins/pve2power/info',
+                    pve2wiki: '/api/plugins/pve2wiki/info'
+                })) {
+                    try {
+                        const response = await fetch(infoUrl);
+                        if (response.ok) {
+                            const info = await response.json();
+                            plugins.push({
+                                id: pluginId,
+                                ...info,
+                                ...PLUGIN_INFO[pluginId],
+                                path: PLUGIN_PATHS[pluginId]
+                            });
+                        }
+                    } catch (e) {
+                        console.log(`Plugin ${pluginId} info not available, using fallback`);
+                        plugins.push({
+                            id: pluginId,
+                            ...PLUGIN_INFO[pluginId],
+                            path: PLUGIN_PATHS[pluginId],
+                            status: 'available'
+                        });
+                    }
+                }
+            }
+
+            if (plugins.length === 0) {
+                container.innerHTML = '<p class="loader">No connectors available</p>';
+                return;
+            }
+
+            container.innerHTML = plugins.map(plugin => {
+                if (!plugin.trust_tier) return '';  // legacy fallback entries keep old style
+                const badge = plugin.trust_tier === 'trusted'
+                    ? '<span class="tier-badge tier-trusted" title="Verified provenance (bundled release or signed package)">🔒 trusted</span>'
+                    : '<span class="tier-badge tier-third-party" title="Provenance not verified by the project signing key">⚠ third_party</span>';
+                const caps = plugin.capabilities || {};
+                const capList = [...(caps.reads || []), ...(caps.writes || [])]
+                    .map(c => `<code>${c}</code>`).join(' ');
+                const capsBlock = capList
+                    ? `<div class="plugin-caps">Capabilities: ${capList}</div>` : '';
+                const verBadge = plugin.version ? `<span class="plugin-version">v${plugin.version}</span>` : '';
+                return `
+                <div class="plugin-card">
+                    <div class="plugin-icon">${plugin.icon}</div>
+                    <div class="plugin-name">${plugin.name || plugin.plugin || plugin.id}</div>
+                    <div class="plugin-desc">${plugin.description || ''}</div>
+                    <div>${verBadge} ${badge}</div>
+                    <span class="plugin-status status-${plugin.status || 'active'}">${plugin.status ? plugin.status : (plugin.loaded === false ? 'Load error' : (plugin.trust_tier ? 'Active' : plugin.status || 'Active'))}</span>${plugin.loaded === false && plugin.load_error ? `<span class="plugin-error" title="${plugin.load_error}" style="color:#b91c1c;font-size:0.8em;margin-left:6px;">⚠ failed</span>` : ''}
+                    ${capsBlock}
+                    <a href="${plugin.path}" class="access-btn">Configure →</a>
+                </div>`;
+            }).join('');
+        }
+
+        loadPlugins();
+        loadSyncSchedule();
+
+        function getCsrfToken() {
+            const m = document.cookie.match(/(?:^|;)\s*pve2_csrf=([^;]+)/);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+
+        async function loadSyncSchedule() {
+            try {
+                const r = await fetch('/admin/scheduler/status');
+                if (!r.ok) return;
+                const s = await r.json();
+                document.getElementById('sync-schedule-card').style.display = '';
+                const el = document.getElementById('sc-status');
+                if (s.running) {
+                    el.innerHTML = 'Running every <strong>' + (s.interval_seconds / 60) + ' min</strong>';
+                } else {
+                    el.innerHTML = 'Stopped';
+                    el.style.color = '#dc2626';
+                }
+                if (s.interval_seconds) {
+                    const mins = s.interval_seconds / 60;
+                    document.getElementById('sc-minutes').value = mins % 1 ? mins : Math.round(mins);
+                }
+                document.getElementById('sc-start').style.display = s.running ? 'none' : '';
+                document.getElementById('sc-stop').style.display = s.running ? '' : 'none';
+            } catch (e) {}
+        }
+
+        function _scInterval() {
+            return Math.round(parseFloat(document.getElementById('sc-minutes').value || '5') * 60);
+        }
+
+        async function scApply() {
+            await _scPost('/admin/scheduler/interval?interval_seconds=' + _scInterval());
+        }
+
+        async function scStart() {
+            await _scPost('/admin/scheduler/start?interval_seconds=' + _scInterval());
+        }
+
+        async function scStop() {
+            await _scPost('/admin/scheduler/stop');
+        }
+
+        async function _scPost(url) {
+            try {
+                await fetch(url, { method:'POST', headers:{'X-CSRF-Token': getCsrfToken()} });
+            } catch(e) {}
+            loadSyncSchedule();
+        }
+    </script>
+</body>
+</html>

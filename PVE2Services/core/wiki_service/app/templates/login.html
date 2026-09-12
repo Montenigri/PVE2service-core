@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PVE2Services — Login</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+  }
+  .card {
+    background:white; border-radius:12px; padding:40px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.2); width:100%; max-width:400px;
+  }
+  .card h1 { text-align:center; color:#333; margin-bottom:8px; font-size:1.5em; }
+  .card p { text-align:center; color:#999; margin-bottom:24px; font-size:0.9em; }
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-weight:600; color:#444; margin-bottom:4px; font-size:0.9em; }
+  .form-group input {
+    width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:6px; font-size:1em;
+  }
+  .form-group input:focus { outline:none; border-color:#667eea; }
+  .btn {
+    width:100%; padding:12px; background:#667eea; color:white; border:none;
+    border-radius:6px; font-size:1em; font-weight:600; cursor:pointer;
+  }
+  .btn:hover { background:#764ba2; }
+  .error { background:#fee; color:#c33; padding:10px; border-radius:6px; margin-bottom:16px; display:none; }
+  .info { background:#e0e7ff; color:#3730a3; padding:12px; border-radius:6px; margin-bottom:16px; font-size:0.9em; line-height:1.5; display:none; }
+  .footer { text-align:center; margin-top:24px; color:#999; font-size:0.85em; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>PVE2Services</h1>
+  <p id="subtitle">Enter your credentials to log in</p>
+  <div class="info" id="setup-msg"></div>
+  <div class="error" id="error-msg"></div>
+  <form id="login-form" onsubmit="return doLogin(event)">
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="username" name="username" placeholder="admin" autofocus required>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" name="password" placeholder="password" required>
+    </div>
+    <button type="submit" class="btn" id="login-btn">Log In</button>
+  </form>
+  <div class="footer">PVE2Services v0.1.0</div>
+</div>
+<script>
+(async function init() {
+  // Check if setup is needed by trying to get setup status (we reuse a lightweight endpoint concept)
+  // For simplicity, we rely on the backend to tell us via a login response, 
+  // but we can proactively style the UI if needed.
+})();
+
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  const err = document.getElementById('error-msg');
+  const info = document.getElementById('setup-msg');
+  err.style.display = 'none'; info.style.display = 'none';
+  try {
+    const r = await fetch('/admin/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value
+      })
+    });
+    if (r.ok) { window.location.href = '/admin/hub'; return; }
+    const data = await r.json().catch(()=>({}));
+    if (r.status === 429) {
+      err.textContent = data.detail || 'Too many attempts. Please try again later.';
+    } else {
+      err.textContent = data.detail || data.error || 'Invalid credentials';
+    }
+    err.style.display = 'block';
+  } catch(e) { err.textContent = 'Connection error'; err.style.display = 'block'; }
+  btn.disabled = false; btn.textContent = 'Log In';
+}
+</script>
+</body>
+</html>

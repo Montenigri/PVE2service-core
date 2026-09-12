@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVE2Services — Settings</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:#f5f5f5; padding:20px;
+  }
+  .container { max-width:600px; margin:0 auto; }
+  .header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+  .header h1 { font-size:1.4em; color:#333; }
+  .back-link { color:#667eea; text-decoration:none; font-size:0.9em; }
+  .back-link:hover { text-decoration:underline; }
+  .card { background:white; border-radius:10px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.1); margin-bottom:20px; }
+  .card h2 { font-size:1.1em; color:#444; margin-bottom:16px; }
+  .form-group { margin-bottom:14px; }
+  .form-group label { display:block; font-weight:600; color:#444; margin-bottom:4px; font-size:0.9em; }
+  .form-group input { width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:0.9em; }
+  .form-group input:focus { outline:none; border-color:#667eea; }
+  .form-group .hint { color:#999; font-size:0.8em; margin-top:2px; }
+  .btn { padding:9px 18px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+  .btn-primary { background:#667eea; color:white; }
+  .btn-primary:hover { background:#764ba2; }
+  .btn-danger { background:#dc2626; color:white; }
+  .btn-danger:hover { background:#b91c1c; }
+  .success { background:#d1fae5; color:#059669; padding:10px; border-radius:6px; margin-bottom:16px; display:none; }
+  .error { background:#fee; color:#c33; padding:10px; border-radius:6px; margin-bottom:16px; display:none; }
+  .info { background:#e0e7ff; color:#3730a3; padding:12px; border-radius:6px; margin-bottom:16px; font-size:0.9em; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <a href="/admin/hub" class="back-link">&larr; Back to Hub</a>
+    <h1>Settings</h1>
+  </div>
+  <div class="success" id="success-msg"></div>
+  <div class="error" id="error-msg"></div>
+
+  <details class="info-note" style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 16px;margin:0 0 20px 0;font-size:0.88em;">
+<summary style="cursor:pointer;font-weight:600;color:#4338ca;user-select:none;">&#8505;&#65039; How credentials are stored &amp; why</summary>
+<div style="margin-top:10px;color:#444;line-height:1.6;">
+<p><strong>What lives here:</strong> the admin account. Credentials are stored in the database as bcrypt hashes — never plaintext — sessions are HMAC-signed cookies, and connector secrets are encrypted at rest with Fernet.</p>
+<p><strong>Why no default password:</strong> a hardcoded admin/password is the first thing attackers try, so the first boot requires creating the account. Changing the password requires the current one; failed attempts are rate-limited (5 per minute, then a 5-minute block) and the counter is shared across replicas.</p>
+</div>
+</details>
+
+<div class="card">
+    <h2>Access Credentials</h2>
+    <div class="info">
+      Set or update your admin credentials below. Password is stored as a bcrypt hash in the database.
+    </div>
+    <form id="creds-form" onsubmit="return changeCredentials(event)">
+      <div class="form-group">
+        <label>New Username</label>
+        <input type="text" id="new-username" placeholder="admin">
+      </div>
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" id="current-password" required>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="new-password" placeholder="Leave empty to keep current">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="confirm-password">
+      </div>
+      <button type="submit" class="btn btn-primary">Update Credentials</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Exit</h2>
+    <button class="btn btn-danger" onclick="doLogout()">Logout</button>
+  </div>
+</div>
+<script>
+async function changeCredentials(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('.btn-primary');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const succ = document.getElementById('success-msg');
+  const err = document.getElementById('error-msg');
+  succ.style.display = 'none'; err.style.display = 'none';
+  const newPass = document.getElementById('new-password').value;
+  const confirmPass = document.getElementById('confirm-password').value;
+  if (newPass && newPass !== confirmPass) {
+    err.textContent = 'The new passwords do not match'; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Update Credentials'; return;
+  }
+  try {
+    const r = await fetch('/admin/settings/credentials', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'X-CSRF-Token': getCsrfToken()},
+      body:JSON.stringify({
+        username: document.getElementById('new-username').value || undefined,
+        current_password: document.getElementById('current-password').value,
+        new_password: newPass || undefined
+      })
+    });
+    const data = await r.json();
+    if (r.ok) {
+      succ.textContent = data.message || 'Credentials updated successfully';
+      succ.style.display = 'block';
+      document.getElementById('current-password').value = '';
+      document.getElementById('new-password').value = '';
+      document.getElementById('confirm-password').value = '';
+    } else {
+      err.textContent = data.detail || data.error || 'Error';
+      err.style.display = 'block';
+    }
+  } catch(e) { err.textContent = 'Connection error'; err.style.display = 'block'; }
+  btn.disabled = false; btn.textContent = 'Update Credentials';
+}
+function getCsrfToken() {
+  // Simple cookie reader for CSRF token sent by backend
+  const match = document.cookie.match(/(?:^|;)\s*pve2_csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+async function doLogout() {
+  await fetch('/admin/logout', {method:'POST', headers:{'X-CSRF-Token': getCsrfToken()}});
+  window.location.href = '/admin/login';
+}
+</script>
+</body>
+</html>

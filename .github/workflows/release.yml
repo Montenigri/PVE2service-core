@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  PVE2_PLUGINS_REPO: Montenigri/PVE2Services-Plugin
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout core
+        uses: actions/checkout@v6
+
+      - name: Checkout first-party plugins (pinned ref)
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.PVE2_PLUGINS_REPO }}
+          # Pin to a tag/commit for reproducible images. The plugin repo also
+          # publishes store packages; the bundled set is the one listed in
+          # PVE2Services/plugins/bundled_plugins.txt.
+          ref: ${{ vars.PVE2_PLUGINS_REF || 'main' }}
+          path: .plugin-src
+
+      - name: Bundle first-party plugins into the image
+        run: |
+          set -euo pipefail
+          list=PVE2Services/plugins/bundled_plugins.txt
+          [ -f "$list" ] || { echo "::error::$list missing"; exit 1; }
+          count=0
+          while read -r name; do
+            name="${name%%#*}"
+            name="$(echo "$name" | xargs)"
+            [ -z "$name" ] && continue
+            src=".plugin-src/plugins/$name"
+            [ -d "$src" ] || { echo "::error::$src not found in plugin repo"; exit 1; }
+            rm -rf "PVE2Services/plugins/$name"
+            cp -r "$src" "PVE2Services/plugins/$name"
+            count=$((count + 1))
+          done < "$list"
+          echo "bundled $count plugin(s)"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./PVE2Services/core/wiki_service/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/pve2:latest,${{ secrets.DOCKERHUB_USERNAME }}/pve2:${{ github.ref_name }}
+
+  publish-wheel:
+    # Publishes the installable `pve2` package used by the plugin repo's CI.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Build wheel + sdist
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+      - name: Attach artifacts to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Optional: also publish to PyPI (set the PYPI_API_TOKEN secret to
+      # enable). The plugin repo's CI installs `pve2` from the index/variable
+      # configured in PVE2_CORE_SPEC.
+      - name: Publish to PyPI
+        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

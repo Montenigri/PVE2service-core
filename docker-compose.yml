@@ -1,0 +1,39 @@
+services:
+  core:
+    build:
+      context: ./
+      dockerfile: PVE2Services/core/wiki_service/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Repo root on /app; the package lives at /app/PVE2Services (PYTHONPATH).
+      - ./:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PVE2_DB_MODE=${PVE2_DB_MODE:-sqlite} # sqlite | postgres | postgres_docker
+      - PVE2_DB_URL=${PVE2_DB_URL:-}
+      - TZ=${TZ:-Europe/Rome}
+      - PVE2_TIMEZONE=${PVE2_TIMEZONE:-Europe/Rome} # timestamps in changelog/history UI
+      # Keep secrets inside the bind-mounted repo so they survive container recreation
+      - PVE2_SECRET_FILE=/app/.pve2_secret
+      - PVE2_ENCRYPTION_KEY_FILE=/app/.pve2_encryption_key
+
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pve2}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pve2pass}
+      POSTGRES_DB: ${POSTGRES_DB:-pve2}
+    volumes:
+      - pve2_db_data:/var/lib/postgresql/data
+    networks:
+      - pve2-net
+
+volumes:
+  pve2_db_data:
+
+networks:
+  pve2-net:
+    driver: bridge

@@ -1,0 +1,20 @@
+# First-party plugins shipped with the core release.
+#
+# The plugin loader treats every directory listed here as TRUSTED: this file is
+# part of the same release artifact (git tag / Docker image) as the loader
+# itself, so they share one trust domain. Anything installed later by the
+# plugin-store installer is verified via its ed25519 signature instead; any
+# other directory manually dropped into plugins/ is treated as third_party.
+#
+# One directory name per line. Lines starting with # and blank lines ignored.
+PVE2Core
+PVE2Dash
+PVE2Audit
+PVE2DNS
+PVE2Notify
+PVE2NUT
+PVE2Proxy
+PVE2Power
+PVE2Drift
+pve2wiki
+example_plugin
