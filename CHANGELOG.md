@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Test isolation: the `PVE2_DB_PATH` resolution test now clears `PVE2_DB_MODE`
+  (the CI Postgres leg sets it and it takes precedence over `PVE2_DB_PATH`).
+
 ## [0.1.0] - 2026-10-04
 
 ### Added

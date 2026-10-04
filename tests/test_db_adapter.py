@@ -57,6 +57,7 @@ class TestResolveDbUrl:
 
     def test_explicit_path(self):
         os.environ.pop("PVE2_DB_URL", None)
+        os.environ.pop("PVE2_DB_MODE", None)
         os.environ["PVE2_DB_PATH"] = "/tmp/test.db"
         url = resolve_db_url()
         assert url == "sqlite:////tmp/test.db"
