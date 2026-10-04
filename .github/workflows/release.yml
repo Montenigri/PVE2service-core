@@ -18,10 +18,10 @@ jobs:
       packages: write
     steps:
       - name: Checkout core
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Checkout first-party plugins (pinned ref)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.PVE2_PLUGINS_REPO }}
           # Pin to a tag/commit for reproducible images. The plugin repo also
@@ -73,7 +73,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
