@@ -84,6 +84,12 @@ docker compose up -d
 # Visit http://localhost:8000/admin/login
 ```
 
+> **Building from a source checkout?** Run `python tools/sync_plugins.py` first:
+> `docker-compose.yml` bind-mounts the repo at `/app`, so the container loads
+> plugins from the repo's `PVE2Services/plugins/` directory. The published
+> image (`ghcr.io/montenigri/pve2`) already bundles them, so no sync is needed
+> there.
+
 For PostgreSQL: `PVE2_DB_MODE=postgres_docker docker compose up -d`
 
 ### Plugin store (optional)
