@@ -1,0 +1,8 @@
+# Development dependencies: runtime deps + lint/test tooling.
+#   pip install -r requirements-dev.txt
+-r requirements.txt
+
+ruff>=0.5.0,<1.0
+pytest
+httpx
+moto[s3]>=5.0,<6.0

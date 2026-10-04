@@ -4,7 +4,7 @@
 
 ```bash
 source .venv/bin/activate          # venv in repo root
-pip install -r requirements.txt
+pip install -r requirements-dev.txt  # runtime + ruff + pytest + moto
 python tools/sync_plugins.py       # fetch first-party plugins into PVE2Services/plugins/
 ruff check .                       # lint (only linter; no type checker configured)
 pytest -q tests                    # core test-suite (SQLite)

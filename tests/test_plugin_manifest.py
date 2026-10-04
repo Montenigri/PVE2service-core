@@ -139,3 +139,73 @@ def test_module_and_function_resolution():
         "PVE2Services.plugins.PVE2DNS.__init__",
         "load_plugin",
     )
+
+
+# --- MCP block ------------------------------------------------------------
+
+
+def test_manifest_without_mcp_has_none():
+    assert parse_manifest(BASE).mcp is None
+
+
+def test_mcp_block_parses():
+    m = parse_manifest(
+        {
+            **BASE,
+            "mcp": {
+                "enabled": True,
+                "tools": [
+                    {
+                        "name": "list_records",
+                        "description": "List records",
+                        "handler": "mcp_tools:list_records",
+                        "capability": "dns_records",
+                        "input_schema": {"type": "object"},
+                    }
+                ],
+            },
+        }
+    )
+    assert m.mcp is not None
+    assert m.mcp.enabled is True
+    assert m.mcp.tools[0].name == "list_records"
+    assert m.mcp.tools[0].read_only is True
+    assert m.mcp.tools[0].handler == "mcp_tools:list_records"
+
+
+def test_mcp_invalid_tool_name_rejected():
+    with pytest.raises(ManifestError):
+        parse_manifest({**BASE, "mcp": {"tools": [{"name": "Bad Name", "handler": "m:t"}]}})
+
+
+def test_mcp_invalid_handler_rejected():
+    with pytest.raises(ManifestError):
+        parse_manifest({**BASE, "mcp": {"tools": [{"name": "tool", "handler": "nofunc"}]}})
+
+
+def test_mcp_duplicate_tool_names_rejected():
+    with pytest.raises(ManifestError):
+        parse_manifest(
+            {
+                **BASE,
+                "mcp": {
+                    "tools": [
+                        {"name": "tool", "handler": "m:f"},
+                        {"name": "tool", "handler": "m:g"},
+                    ]
+                },
+            }
+        )
+
+
+def test_mcp_unknown_key_rejected():
+    with pytest.raises(ManifestError):
+        parse_manifest({**BASE, "mcp": {"enabled": True, "typo": 1}})
+
+
+def test_mcp_tool_unknown_key_rejected():
+    with pytest.raises(ManifestError):
+        parse_manifest(
+            {**BASE, "mcp": {"tools": [{"name": "tool", "handler": "m:f", "typo": 1}]}}
+        )
+

@@ -202,6 +202,32 @@ Full details (signing, key management, release pipeline, edge cases):
 [docs/PLUGIN_STORE.md](PLUGIN_STORE.md). Plugin development guide with the
 complete manifest schema: [PLUGIN_DEVELOPMENT.md](../PLUGIN_DEVELOPMENT.md).
 
+### MCP tools (assistant integration)
+
+Plugins may expose **read-only** capabilities to the in-process LLM assistant
+(**Winky**, provided by the `PVE2LLM` plugin) through a declarative `mcp:` block
+in `plugin.yaml`:
+
+```yaml
+mcp:
+  enabled: true
+  tools:
+    - name: list_records
+      description: List every managed DNS record.
+      handler: "mcp_tools:list_records"   # module:function, relative to the plugin
+      capability: dns_records
+      input_schema: {type: object, properties: {}, additionalProperties: false}
+      read_only: true
+```
+
+The loader resolves each `handler` and registers it in an in-process registry
+(`libs/mcp_registry.py`) — there is no network transport and no extra auth
+surface. Handlers are async callables `handler(params: dict) -> Any`; the
+assistant only ever exposes tools with `read_only: true`, and every call is
+audit-logged. A broken tool wiring is logged and never blocks the plugin from
+loading. Tool registration is declarative, so plugins are discovered dynamically
+without core changes.
+
 ### Required Endpoints
 
 Every plugin should define these 4 endpoints for hub compatibility:
@@ -896,8 +922,8 @@ LAN-facing, self-hosted panel. Report vulnerabilities per
 ### Setup
 
 ```bash
-git clone https://github.com/your-org/PVE2Services.git
-cd PVE2Services
+git clone https://github.com/your-org/pve2service-core.git
+cd pve2service-core
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```

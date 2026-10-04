@@ -17,8 +17,8 @@ Thank you for your interest in contributing to PVE2Services! This document provi
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/PVE2Services.git
-   cd PVE2Services
+   git clone https://github.com/YOUR_USERNAME/pve2service-core.git
+   cd pve2service-core
    ```
 3. Create a branch for your changes:
    ```bash

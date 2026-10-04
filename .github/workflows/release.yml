@@ -7,10 +7,15 @@ on:
 
 env:
   PVE2_PLUGINS_REPO: Montenigri/PVE2Services-Plugin
+  # GHCR image (owner must be lowercase for ghcr.io). Tags: :vX.Y.Z and :latest.
+  IMAGE: ghcr.io/montenigri/pve2
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout core
         uses: actions/checkout@v6
@@ -47,24 +52,26 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./PVE2Services/core/wiki_service/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/pve2:latest,${{ secrets.DOCKERHUB_USERNAME }}/pve2:${{ github.ref_name }}
+          tags: ${{ env.IMAGE }}:latest,${{ env.IMAGE }}:${{ github.ref_name }}
 
   publish-wheel:
-    # Publishes the installable `pve2` package used by the plugin repo's CI.
+    # Builds the installable `pve2` package and attaches it to the GitHub
+    # release (the plugin repo's CI installs it via PVE2_CORE_SPEC).
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -80,11 +87,3 @@ jobs:
           files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Optional: also publish to PyPI (set the PYPI_API_TOKEN secret to
-      # enable). The plugin repo's CI installs `pve2` from the index/variable
-      # configured in PVE2_CORE_SPEC.
-      - name: Publish to PyPI
-        if: ${{ secrets.PYPI_API_TOKEN != '' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}

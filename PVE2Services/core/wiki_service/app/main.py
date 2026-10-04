@@ -65,6 +65,7 @@ PLUGINS_DIR = (
 PLUGIN_ORDER = [
     "pve2core", "pve2dash", "pve2audit", "pve2dns",
     "pve2notify", "pve2nut", "pve2proxy", "pve2power", "pve2drift", "pve2wiki",
+    "pve2llm",
 ]
 
 

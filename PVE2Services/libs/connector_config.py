@@ -32,6 +32,10 @@ SECRET_FIELDS = frozenset({
     "discord_webhook_url",
     "slack_webhook_url",
     "mattermost_webhook_url",
+    # PVE2LLM (Winky) provider credentials
+    "openai_api_key",
+    "anthropic_api_key",
+    "ollama_api_key",
 })
 
 _DEFAULT_KEY_FILE = os.getenv("PVE2_ENCRYPTION_KEY_FILE", ".pve2_encryption_key")

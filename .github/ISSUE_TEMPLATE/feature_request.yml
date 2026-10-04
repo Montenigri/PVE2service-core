@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest an idea or improvement for PVE2Services Core
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. If your idea concerns a **plugin** rather
+        than the core, please file it in the
+        [PVE2Services-Plugin](https://github.com/Montenigri/PVE2Services-Plugin) repo.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of what the problem is.
+      placeholder: "I'm always frustrated when ..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core API / app
+        - Plugin loader / plugins
+        - Plugin store / signing
+        - Database / migrations
+        - Authentication / security
+        - Scheduler
+        - Docker / deployment
+        - Documentation
+        - Other
+    validations:
+      required: true

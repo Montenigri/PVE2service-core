@@ -86,10 +86,34 @@ def test_resolve_public_key_order(tmp_path, keypair, monkeypatch):
 
 
 def test_resolve_public_key_missing_raises(monkeypatch, tmp_path):
+    from PVE2Services.libs import plugin_signing as ps
+
     monkeypatch.delenv("PVE2_PLUGIN_SIGNING_PUBKEY", raising=False)
-    monkeypatch.setattr(
-        "PVE2Services.libs.plugin_signing.DEFAULT_PUBLIC_KEY_PATH",
-        tmp_path / "does-not-exist.pub",
-    )
+    monkeypatch.setattr(ps, "DEFAULT_PUBLIC_KEY_PATH", tmp_path / "no-repo.pub")
+    monkeypatch.setattr(ps, "PACKAGED_PUBLIC_KEY_PATH", tmp_path / "no-packaged.pub")
     with pytest.raises(TrustError):
         resolve_public_key()
+
+
+def test_packaged_public_key_matches_repo_key():
+    """The key shipped in the package must not drift from the committed one."""
+    from PVE2Services.libs import plugin_signing as ps
+
+    assert ps.DEFAULT_PUBLIC_KEY_PATH.is_file()
+    assert ps.PACKAGED_PUBLIC_KEY_PATH.is_file()
+    assert (
+        ps.DEFAULT_PUBLIC_KEY_PATH.read_bytes()
+        == ps.PACKAGED_PUBLIC_KEY_PATH.read_bytes()
+    )
+
+
+def test_resolve_public_key_falls_back_to_packaged(monkeypatch, tmp_path):
+    """A wheel install (no repo keys/) resolves the packaged copy."""
+    from PVE2Services.libs import plugin_signing as ps
+
+    monkeypatch.delenv("PVE2_PLUGIN_SIGNING_PUBKEY", raising=False)
+    monkeypatch.setattr(ps, "DEFAULT_PUBLIC_KEY_PATH", tmp_path / "no-repo.pub")
+    resolved = resolve_public_key()
+    assert resolved.public_bytes_raw() == load_public_key(
+        ps.PACKAGED_PUBLIC_KEY_PATH.read_bytes()
+    ).public_bytes_raw()

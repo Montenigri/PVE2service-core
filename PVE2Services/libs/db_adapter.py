@@ -12,12 +12,30 @@ from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger("pve2.db_adapter")
 
+_POSTGRES_SCHEMES = ("postgresql://", "postgres://")
+
+
+def _normalize_db_url(url: str) -> str:
+    """Pin the psycopg2 driver on bare Postgres URLs.
+
+    SQLAlchemy 2.1 changed the default DBAPI for ``postgresql://`` to psycopg
+    v3, while this project depends on ``psycopg2-binary``. Decorating the URL
+    with ``+psycopg2`` makes the declared dependency the one actually used,
+    independently of the SQLAlchemy default, for both env-provided URLs and
+    ones we build. Explicit drivers (``postgresql+psycopg://`` etc.) are left
+    untouched.
+    """
+    for scheme in _POSTGRES_SCHEMES:
+        if url.startswith(scheme):
+            return "postgresql+psycopg2://" + url[len(scheme):]
+    return url
+
 
 def resolve_db_url() -> str:
     """Resolve the database URL from environment variables with a unified fallback."""
     env_url = os.getenv("PVE2_DB_URL")
     if env_url:
-        return env_url
+        return _normalize_db_url(env_url)
     pve2_mode = os.getenv("PVE2_DB_MODE")
     if pve2_mode in ("postgres", "postgres_docker"):
         user = os.getenv("PVE2_DB_USER", "pve2")
@@ -28,7 +46,7 @@ def resolve_db_url() -> str:
             logger.warning(
                 "PVE2_DB_PASS is using the default value 'pve2pass' — change it for production!"
             )
-        return f"postgresql://{user}:{pwd}@{host}:5432/{name}"
+        return _normalize_db_url(f"postgresql://{user}:{pwd}@{host}:5432/{name}")
     env_path = os.getenv("PVE2_DB_PATH")
     if env_path:
         return f"sqlite:///{env_path}"
@@ -56,7 +74,7 @@ def get_db() -> "DBAdapter":
 
 class DBAdapter:
     def __init__(self, db_url: Optional[str] = None):
-        self.db_url = db_url or resolve_db_url()
+        self.db_url = _normalize_db_url(db_url or resolve_db_url())
 
         self.engine: Engine = create_engine(self.db_url, future=True)
         self._ensure_schema()

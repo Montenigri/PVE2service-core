@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
@@ -41,6 +42,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest", "httpx", "moto[s3]>=5.0,<6.0"]
+dev = ["ruff>=0.5.0,<1.0", "pytest", "httpx", "moto[s3]>=5.0,<6.0"]
 
 [project.scripts]
 # Build/sign/publish plugin packages to the store and generate signing keys.
@@ -49,11 +51,11 @@ pve2-build-plugin = "PVE2Services.libs.plugin_build:main"
 pve2-generate-keys = "PVE2Services.libs.plugin_keys:main"
 
 [project.urls]
-Homepage = "https://github.com/Montenigri/PVE2Services"
-Repository = "https://github.com/Montenigri/PVE2Services"
-Issues = "https://github.com/Montenigri/PVE2Services/issues"
-Documentation = "https://github.com/Montenigri/PVE2Services/blob/main/docs/TECHNICAL.md"
-Changelog = "https://github.com/Montenigri/PVE2Services/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Montenigri/pve2service-core"
+Repository = "https://github.com/Montenigri/pve2service-core"
+Issues = "https://github.com/Montenigri/pve2service-core/issues"
+Documentation = "https://github.com/Montenigri/pve2service-core/blob/main/docs/TECHNICAL.md"
+Changelog = "https://github.com/Montenigri/pve2service-core/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 # The import package is nested one level below the repo root.
@@ -61,6 +63,9 @@ include = ["PVE2Services*"]
 
 [tool.setuptools.package-data]
 "PVE2Services.core.wiki_service.app" = ["templates/*"]
+# Ship the public signing key inside the package so `pip install pve2` can
+# verify plugin-store signatures without a repo checkout.
+"PVE2Services" = ["keys/*"]
 
 [tool.ruff]
 target-version = "py311"

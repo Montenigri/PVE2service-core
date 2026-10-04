@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/Python-3.11+-764ba2?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"/>
   <img src="https://img.shields.io/badge/FastAPI-0.100+-059669?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI"/>
   <img src="https://img.shields.io/badge/license-MIT-333?style=for-the-badge" alt="License MIT"/>
-  <a href="https://github.com/Montenigri/PVE2Services/actions"><img src="https://img.shields.io/github/actions/workflow/status/Montenigri/PVE2Services/ci.yml?style=for-the-badge&label=CI" alt="CI Status"/></a>
+  <a href="https://github.com/Montenigri/pve2service-core/actions"><img src="https://img.shields.io/github/actions/workflow/status/Montenigri/pve2service-core/ci.yml?style=for-the-badge&label=CI" alt="CI Status"/></a>
 </p>
 
 <h1 align="center">PVE2 Services</h1>
@@ -40,6 +40,7 @@
 | **PVE2 Proxy** | Generate and deploy proxy configurations | Nginx, Traefik, SSH servers |
 | **PVE2 Drift** | Detect infrastructure drift from OpenTofu state | OpenTofu/Terraform |
 | **PVE2 Wiki** | Sync cluster documentation to external wiki | Wiki.js (GraphQL) |
+| **PVE2 LLM** | Winky — ask the cluster questions in natural language | Ollama, OpenAI, Anthropic |
 
 The plugin sources live in a separate repo,
 [**Montenigri/PVE2Services-Plugin**](https://github.com/Montenigri/PVE2Services-Plugin).
@@ -51,8 +52,8 @@ and extra plugins can be installed from the optional plugin store.
 ## Quick Start
 
 ```bash
-git clone https://github.com/Montenigri/PVE2Services.git
-cd PVE2Services
+git clone https://github.com/Montenigri/pve2service-core.git
+cd pve2service-core
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
@@ -174,9 +175,10 @@ Details: [`docs/PLUGIN_STORE.md`](docs/PLUGIN_STORE.md).
 ## Development
 
 ```bash
-ruff check .                    # lint
-pytest -q tests                 # test (SQLite)
-pytest -q tests -x              # stop on first failure
+pip install -r requirements-dev.txt   # runtime + ruff + pytest + moto
+ruff check .                          # lint
+pytest -q tests                       # test (SQLite)
+pytest -q tests -x                    # stop on first failure
 ```
 
 ---

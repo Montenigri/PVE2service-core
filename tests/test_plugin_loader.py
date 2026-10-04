@@ -205,3 +205,63 @@ def test_alternative_entrypoint_function(plug, fresh_registry, monkeypatch):
     d = plug("altplug", manifest=VALID_MANIFEST.replace("load_plugin", "register"))
     ids, registry = load_all_plugins(types.SimpleNamespace(), d.parent)
     assert ids == ["altplug"]
+
+
+MCP_MANIFEST = VALID_MANIFEST + """\
+mcp:
+  enabled: true
+  tools:
+    - name: ping_tool
+      description: ping
+      handler: "mcp_tools:ping_tool"
+      capability: dns_records
+      read_only: true
+      input_schema:
+        type: object
+        properties: {}
+"""
+
+
+def test_mcp_tools_registered_from_manifest(plug, fresh_registry):
+    from PVE2Services.libs.mcp_registry import get_mcp_registry
+
+    d = plug("mcpmod", manifest=MCP_MANIFEST)
+    (d / "mcp_tools.py").write_text(
+        "async def ping_tool(params):\n    return {'pong': True}\n"
+    )
+    ids, _ = load_all_plugins(types.SimpleNamespace(), d.parent)
+    assert "mcpmod" in ids
+    specs = get_mcp_registry().all(read_only_only=True)
+    assert any(s.plugin_id == "fakeplug" and s.name == "ping_tool" for s in specs)
+
+
+def test_broken_mcp_handler_does_not_kill_plugin(plug, fresh_registry):
+    d = plug(
+        "badmcp",
+        manifest=MCP_MANIFEST.replace("mcp_tools:ping_tool", "mcp_tools:missing"),
+    )
+    (d / "mcp_tools.py").write_text("X = 1\n")
+    ids, registry = load_all_plugins(types.SimpleNamespace(), d.parent)
+    assert "badmcp" in ids  # plugin still loads despite the broken tool
+    assert registry.get("fakeplug").loaded is True
+
+
+def test_mcp_registry_reset_between_loads(plug, fresh_registry, tmp_path):
+    from PVE2Services.libs.mcp_registry import get_mcp_registry
+
+    d = plug("mcpmod", manifest=MCP_MANIFEST)
+    (d / "mcp_tools.py").write_text(
+        "async def ping_tool(params):\n    return {}\n"
+    )
+    load_all_plugins(types.SimpleNamespace(), d.parent)
+    assert len(get_mcp_registry()) == 1
+
+    # A separate root with no MCP tools clears the previous entries.
+    other = tmp_path / "other"
+    plain = other / "plain"
+    plain.mkdir(parents=True)
+    (plain / "plugin.yaml").write_text(VALID_MANIFEST)
+    (plain / "__init__.py").write_text("def load_plugin(app):\n    pass\n")
+    load_all_plugins(types.SimpleNamespace(), other)
+    assert len(get_mcp_registry()) == 0
+

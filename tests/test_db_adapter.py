@@ -32,6 +32,19 @@ class TestResolveDbUrl:
         url = resolve_db_url()
         assert url == "sqlite:///custom.db"
 
+    def test_explicit_postgres_url_pins_psycopg2(self):
+        """Bare postgres URLs must use the declared psycopg2 driver.
+
+        SQLAlchemy 2.1 defaults ``postgresql://`` to psycopg v3; the project
+        depends on psycopg2-binary, so the driver is pinned explicitly.
+        """
+        os.environ["PVE2_DB_URL"] = "postgresql://u:p@localhost:5432/db"
+        assert resolve_db_url() == "postgresql+psycopg2://u:p@localhost:5432/db"
+
+    def test_explicit_postgres_psycopg3_url_untouched(self):
+        os.environ["PVE2_DB_URL"] = "postgresql+psycopg://u:p@localhost:5432/db"
+        assert resolve_db_url() == "postgresql+psycopg://u:p@localhost:5432/db"
+
     def test_postgres_mode(self):
         os.environ.pop("PVE2_DB_URL", None)
         os.environ["PVE2_DB_MODE"] = "postgres"
@@ -40,7 +53,7 @@ class TestResolveDbUrl:
         os.environ["PVE2_DB_HOST"] = "localhost"
         os.environ["PVE2_DB_NAME"] = "testdb"
         url = resolve_db_url()
-        assert "postgresql://testuser:testpass@localhost:5432/testdb" == url
+        assert "postgresql+psycopg2://testuser:testpass@localhost:5432/testdb" == url
 
     def test_explicit_path(self):
         os.environ.pop("PVE2_DB_URL", None)

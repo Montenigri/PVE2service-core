@@ -38,6 +38,12 @@ logger = logging.getLogger("pve2.plugin_signing")
 # (the import package is nested one level below the repo root).
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PUBLIC_KEY_PATH = REPO_ROOT / "keys" / "plugin_signing.pub"
+# The public key is also shipped *inside* the package so that a wheel install
+# (`pip install pve2`) can verify store signatures without the repo checkout:
+# site-packages/PVE2Services/keys/plugin_signing.pub.
+PACKAGED_PUBLIC_KEY_PATH = (
+    Path(__file__).resolve().parents[1] / "keys" / "plugin_signing.pub"
+)
 
 # Detached signature sidecar of plugin.yaml (used in packages and by the loader)
 MANIFEST_SIGNATURE_FILENAME = "plugin.yaml.sig"
@@ -113,7 +119,8 @@ def resolve_public_key(explicit_path: str | Path | None = None) -> Ed25519Public
     """Resolve the trusted public key.
 
     Order: explicit path argument > ``PVE2_PLUGIN_SIGNING_PUBKEY`` env (file
-    path or raw PEM) > repo default ``keys/plugin_signing.pub``.
+    path or raw PEM) > repo default ``keys/plugin_signing.pub`` > the copy
+    shipped inside the package (wheel installs).
     """
     candidates: list[str] = []
     if explicit_path:
@@ -122,6 +129,7 @@ def resolve_public_key(explicit_path: str | Path | None = None) -> Ed25519Public
     if env_value:
         candidates.append(env_value)
     candidates.append(str(DEFAULT_PUBLIC_KEY_PATH))
+    candidates.append(str(PACKAGED_PUBLIC_KEY_PATH))
 
     errors: list[str] = []
     for candidate in candidates:

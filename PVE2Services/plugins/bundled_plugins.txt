@@ -15,6 +15,7 @@ PVE2Notify
 PVE2NUT
 PVE2Proxy
 PVE2Power
-PVE2Drift
+#PVE2Drift
 pve2wiki
-example_plugin
+PVE2LLM
+#example_plugin

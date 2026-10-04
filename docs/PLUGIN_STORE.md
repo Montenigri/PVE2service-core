@@ -1,7 +1,7 @@
 # Plugin Store — guida operativa
 
-Implementazione del documento [`pve2services-plugin-store.md`](../pve2services-plugin-store.md) (MVP, via **trusted**):
-manifest per plugin, validazione del loader, firma ed25519, bucket S3/MinIO con
+Implementazione del design MVP (via **trusted**) del plugin store: manifest per
+plugin, validazione del loader, firma ed25519, bucket S3/MinIO con
 `index.json` e installer automatico all'avvio. La via **third-party** (repo
 esterne, pin a commit, isolamento subprocess) resta prevista in roadmap: il
 loader già classifica ogni pacchetto senza firma verificabile come
@@ -114,7 +114,7 @@ Chiave **pubblica** committata nel repo; **privata** solo nei GitHub Secrets
    `PVE2_STORE_ACCESS_KEY`, `PVE2_STORE_SECRET_KEY`.
 3. I workflow sono divisi tra le due repo:
 
-   **Repo core (`PVE2Services`)** — al tag `v*`, `.github/workflows/release.yml`:
+   **Repo core (`pve2service-core`)** — al tag `v*`, `.github/workflows/release.yml`:
    - fa checkout di `PVE2Services-Plugin` al ref pinnato (`vars.PVE2_PLUGINS_REF`),
    - copia in `PVE2Services/plugins/` i plugin elencati in `bundled_plugins.txt`
      (i plugin first-party open restano **bundled**, non passano dallo store),

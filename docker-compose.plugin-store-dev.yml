@@ -28,14 +28,18 @@ services:
       retries: 12
 
   store-init:
-    # Creates the plugins bucket at startup (one-shot).
+    # Creates the plugins bucket and an empty index.json at startup (one-shot).
     image: minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 pve2store pve2store-secret &&
-      mc mb --ignore local/pve2services-plugins &&
-      echo '{\"schema_version\":1,\"plugins\":[]}' > /tmp/index.json &&
-      mc cp /tmp/index.json local/pve2services-plugins/index.json"
+    entrypoint: |
+      /bin/sh -c '
+      set -e
+      mc alias set local http://minio:9000 pve2store pve2store-secret
+      mc mb --ignore-existing local/pve2services-plugins
+      cat > /tmp/index.json <<EOF
+      {"schema_version":1,"plugins":[]}
+      EOF
+      mc cp /tmp/index.json local/pve2services-plugins/index.json
+      '

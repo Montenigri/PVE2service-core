@@ -6,7 +6,10 @@ If you discover a security vulnerability in PVE2Services, please report it respo
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email security concerns to: [INSERT SECURITY EMAIL]
+Report it privately through GitHub: open the repository's **Security** tab →
+**Advisories** → **Report a vulnerability** (GitHub Private Vulnerability
+Reporting). The report stays visible only to the maintainers until a fix is
+released.
 
 Include:
 - Description of the vulnerability

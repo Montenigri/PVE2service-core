@@ -12,6 +12,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 	PATH=/usr/local/bin:/install/bin:$PATH \
 	PYTHONPATH=/app
 COPY --from=builder /install /usr/local
+# pve2proxy deploys via the ssh/scp CLI; the slim base image does not ship them.
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends openssh-client \
+	&& rm -rf /var/lib/apt/lists/*
 # The import package lives in PVE2Services/ inside the repo: copying the repo
 # root to /app yields /app/PVE2Services/... which PYTHONPATH=/app resolves.
 COPY . /app

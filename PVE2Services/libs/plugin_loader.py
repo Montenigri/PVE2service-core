@@ -30,6 +30,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from PVE2Services.libs.errors import ManifestError, TrustError
+from PVE2Services.libs.mcp_registry import register_tool, reset_mcp_registry
 from PVE2Services.libs.plugin_manifest import (
     MANIFEST_FILENAME,
     PluginManifest,
@@ -97,6 +98,61 @@ def _import_plugin_module(
         relative = entry_module.rsplit(f".{directory.name}.", 1)[-1]
         module = importlib.import_module(f"{base}.{relative}")
     return module, func_name
+
+
+def _plugin_package_base(plugins_dir: Path, directory: Path) -> str:
+    """Import base for a plugin directory (monolithic vs external checkout)."""
+    if plugins_dir.resolve() == REPO_PLUGINS_DIR.resolve():
+        return f"PVE2Services.plugins.{directory.name}"
+    return f"pve2_external_{directory.name.lower()}"
+
+
+def _register_manifest_mcp_tools(
+    plugins_dir: Path,
+    directory: Path,
+    manifest: PluginManifest | None,
+) -> None:
+    """Resolve and register the read-only MCP tools declared in the manifest.
+
+    Best-effort: a broken tool wiring is logged, never fatal — the plugin still
+    loads. Handlers are imported from ``module:function`` relative to the
+    plugin package.
+    """
+    if manifest is None or manifest.mcp is None or not manifest.mcp.enabled:
+        return
+    base = _plugin_package_base(plugins_dir, directory)
+    for tool in manifest.mcp.tools:
+        try:
+            module_name, func_name = tool.handler.split(":", 1)
+            if module_name in ("", "__init__"):
+                full_module = base
+            elif module_name.startswith("PVE2Services.plugins."):
+                full_module = module_name
+            else:
+                full_module = f"{base}.{module_name}"
+            module = importlib.import_module(full_module)
+            handler = getattr(module, func_name, None)
+            if handler is None or not callable(handler):
+                raise ManifestError(
+                    f"MCP tool handler {tool.handler!r} not found in {full_module}",
+                    plugin_id=manifest.id,
+                )
+            register_tool(
+                manifest.id,
+                name=tool.name,
+                handler=handler,
+                description=tool.description,
+                input_schema=tool.input_schema,
+                capability=tool.capability,
+                read_only=tool.read_only,
+            )
+        except Exception as exc:  # noqa: BLE001 — tool wiring must not kill the plugin
+            logger.warning(
+                "Plugin %s: could not register MCP tool %s (%s)",
+                manifest.id,
+                tool.name,
+                exc,
+            )
 
 
 class PluginInfo(BaseModel):
@@ -349,6 +405,9 @@ def load_all_plugins(
     bundled = _read_bundled_list(plugins_dir)
     candidates = discover_candidate_dirs(plugins_dir)
 
+    # Fresh MCP tool registry for this discovery pass (plugins re-register).
+    reset_mcp_registry()
+
     # Deterministic duplicate-key resolution: signed > bundled > unsigned.
     best: dict[str, Path] = {}
     losers: list[tuple[str, str]] = []  # (loser dir name, reason)
@@ -394,6 +453,7 @@ def load_all_plugins(
                     plugin_id=prepared.info.id,
                 )
             entry_func(app)
+            _register_manifest_mcp_tools(plugins_dir, directory, prepared.manifest)
             prepared.info.loaded = True
             loaded_ids.append(key)
             logger.info(

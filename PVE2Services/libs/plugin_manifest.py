@@ -40,6 +40,17 @@ KNOWN_READ_CAPABILITIES = {
     "machine_cache",
     "connector_config",
     "audit_log",
+    # Read surfaces exposed to the PVE2LLM (Winky) assistant via MCP tools.
+    "dns_records",
+    "power_schedules",
+    "proxy_configs",
+    "audit_recommendations",
+    "drift_state",
+    "nut_history",
+    "nut_events",
+    "wiki_pages",
+    "sync_state",
+    "changelog",
 }
 KNOWN_WRITE_CAPABILITIES = {
     "machine_cache",
@@ -95,6 +106,76 @@ class PluginCapabilities(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class MCPTool(BaseModel):
+    """A single capability a plugin exposes to the PVE2LLM (Winky) assistant.
+
+    ``handler`` is a ``module:function`` reference resolved relative to the
+    plugin package (e.g. ``mcp_tools:list_machines``). Handlers are read-only
+    by contract; the assistant only ever exposes tools with ``read_only=True``.
+    """
+
+    name: str
+    description: str = ""
+    handler: str
+    capability: str = ""
+    input_schema: dict[str, Any] = Field(default_factory=dict)
+    read_only: bool = True
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("name")
+    @classmethod
+    def _validate_tool_name(cls, value: str) -> str:
+        if not re.fullmatch(r"[a-z][a-z0-9_]{1,63}", value or ""):
+            raise ValueError(
+                f"mcp tool name {value!r} must be a lowercase identifier "
+                "(2-64 chars, [a-z][a-z0-9_]*)"
+            )
+        return value
+
+    @field_validator("handler")
+    @classmethod
+    def _validate_handler(cls, value: str) -> str:
+        if not _ENTRYPOINT_RE.match(value or ""):
+            raise ValueError(
+                f"mcp tool handler {value!r} is invalid: expected 'module:function'"
+            )
+        return value
+
+    @field_validator("description")
+    @classmethod
+    def _validate_tool_description(cls, value: str) -> str:
+        if len(value or "") > 1024:
+            raise ValueError("mcp tool description must be at most 1024 chars")
+        return value
+
+    @field_validator("input_schema")
+    @classmethod
+    def _validate_input_schema(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise ValueError("mcp tool input_schema must be a JSON object")
+        return value
+
+
+class MCPServer(BaseModel):
+    """Optional ``mcp:`` block in ``plugin.yaml`` declaring assistant tools."""
+
+    enabled: bool = True
+    tools: list[MCPTool] = Field(default_factory=list)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("tools")
+    @classmethod
+    def _validate_unique_tool_names(cls, value: list[MCPTool]) -> list[MCPTool]:
+        seen: set[str] = set()
+        for tool in value:
+            if tool.name in seen:
+                raise ValueError(f"duplicate mcp tool name {tool.name!r}")
+            seen.add(tool.name)
+        return value
+
+
 class PluginManifest(BaseModel):
     """Schema for ``plugin.yaml``.
 
@@ -117,6 +198,8 @@ class PluginManifest(BaseModel):
     trust_tier: str = "third_party"
     license_required: bool = False
     license_server_url: str | None = None
+    # Optional MCP surface consumed by the PVE2LLM (Winky) assistant.
+    mcp: MCPServer | None = None
 
     model_config = {"extra": "forbid"}
 
