@@ -18,10 +18,10 @@ jobs:
       packages: write
     steps:
       - name: Checkout core
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Checkout first-party plugins (pinned ref)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.PVE2_PLUGINS_REPO }}
           # Pin to a tag/commit for reproducible images. The plugin repo also
@@ -49,17 +49,17 @@ jobs:
           echo "bundled $count plugin(s)"
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v4
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v4
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./PVE2Services/core/wiki_service/Dockerfile
@@ -73,8 +73,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Build wheel + sdist
@@ -82,7 +82,7 @@ jobs:
           python -m pip install --upgrade build
           python -m build
       - name: Attach artifacts to the GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
         env:
